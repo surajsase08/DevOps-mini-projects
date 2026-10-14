@@ -9,39 +9,39 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                echo 'Repository checked out by Jenkins.'
             }
         }
 
-        stage('Setup Python') {
+        stage('Library Project CI') {
             steps {
-                sh 'python3 --version'
-                sh 'python3 -m venv .venv-ci'
-                sh '.venv-ci/bin/python -m pip install --upgrade pip'
-                sh '.venv-ci/bin/python -m pip install -r requirements.txt'
-            }
-        }
+                dir('unit-3/library-management-platform') {
+                    stage('Setup Python') {
+                        sh 'python3 --version'
+                        sh 'python3 -m venv .venv-ci'
+                        sh '.venv-ci/bin/python -m pip install --upgrade pip'
+                        sh '.venv-ci/bin/python -m pip install -r requirements.txt'
+                    }
 
-        stage('Code Quality') {
-            steps {
-                sh '.venv-ci/bin/python -m flake8 app database tests run.py'
-            }
-        }
+                    stage('Code Quality') {
+                        sh '.venv-ci/bin/python -m flake8 app database tests run.py'
+                    }
 
-        stage('Run Tests') {
-            steps {
-                sh '.venv-ci/bin/python -m pytest tests/ --junitxml=pytest-results.xml'
-            }
-            post {
-                always {
-                    junit 'pytest-results.xml'
+                    stage('Run Tests') {
+                        sh '.venv-ci/bin/python -m pytest tests/ --junitxml=pytest-results.xml'
+                    }
+
+                    stage('Build Docker Image') {
+                        sh 'docker build -t library-management-platform:1.0 .'
+                    }
                 }
             }
-        }
 
-        stage('Build Docker Image') {
-            steps {
-                sh 'docker build -t library-management-platform:1.0 .'
+            post {
+                always {
+                    junit allowEmptyResults: true,
+                          testResults: 'unit-3/library-management-platform/pytest-results.xml'
+                }
             }
         }
     }
