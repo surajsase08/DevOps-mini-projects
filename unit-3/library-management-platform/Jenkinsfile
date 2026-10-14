@@ -1,0 +1,47 @@
+
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Setup Python') {
+            steps {
+                sh 'python3 --version'
+                sh 'python3 -m pip install --upgrade pip'
+                sh 'python3 -m pip install -r requirements.txt'
+            }
+        }
+
+        stage('Code Quality') {
+            steps {
+                sh 'python3 -m flake8 app database tests run.py'
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh 'python3 -m pytest tests/ --junitxml=pytest-results.xml'
+            }
+            post {
+                always {
+                    junit 'pytest-results.xml'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t library-management-platform:1.0 .'
+            }
+        }
+    }
+}
